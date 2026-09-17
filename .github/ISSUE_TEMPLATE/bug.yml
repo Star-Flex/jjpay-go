@@ -1,0 +1,31 @@
+name: 报告问题
+description: SDK 的行为和文档对不上，或者用着有问题
+body:
+  - type: input
+    id: version
+    attributes:
+      label: SDK 版本
+      placeholder: v0.1.0
+    validations:
+      required: true
+  - type: input
+    id: goversion
+    attributes:
+      label: Go 版本
+      placeholder: go version go1.24.0 darwin/arm64
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现代码或步骤
+      description: 尽量给能直接跑的最小例子。请去掉 app_secret 与真实单号。
+      render: go
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 你期望的行为，和实际看到的
+    validations:
+      required: true

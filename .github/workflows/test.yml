@@ -1,0 +1,33 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 1.22 是 go.mod 里声明的下限，必须真的在 1.22 上能编能过；
+        # stable 保证新版本不会把我们甩下。只跑这两头，中间的版本不值得烧 CI。
+        go: ["1.22", "stable"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          # 本包没有任何第三方依赖，没有 go.sum 可做 cache key
+          cache: false
+      - run: go vet ./...
+      - run: go test -race ./...
+      - name: gofmt
+        run: |
+          out="$(gofmt -l .)"
+          if [ -n "$out" ]; then echo "以下文件没格式化："; echo "$out"; exit 1; fi
