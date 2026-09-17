@@ -1,12 +1,18 @@
-# jjpay Go SDK
+<p align="center">
+  <img src="logo.svg" width="96" height="96" alt="">
+</p>
 
-[![test](https://github.com/Star-Flex/jjpay-go/actions/workflows/test.yml/badge.svg)](https://github.com/Star-Flex/jjpay-go/actions/workflows/test.yml)
-[![lint](https://github.com/Star-Flex/jjpay-go/actions/workflows/lint.yml/badge.svg)](https://github.com/Star-Flex/jjpay-go/actions/workflows/lint.yml)
-[![codeql](https://github.com/Star-Flex/jjpay-go/actions/workflows/codeql.yml/badge.svg)](https://github.com/Star-Flex/jjpay-go/actions/workflows/codeql.yml)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Star-Flex/jjpay-go/badge)](https://scorecard.dev/viewer/?uri=github.com/Star-Flex/jjpay-go)
-[![Go Reference](https://pkg.go.dev/badge/github.com/Star-Flex/jjpay-go.svg)](https://pkg.go.dev/github.com/Star-Flex/jjpay-go)
-[![Go 1.22+](https://img.shields.io/badge/go-1.22%2B-00ADD8)](go.mod)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+<h1 align="center">jjpay Go SDK</h1>
+
+<p align="center">
+  <a href="https://github.com/Star-Flex/jjpay-go/actions/workflows/test.yml"><img src="https://github.com/Star-Flex/jjpay-go/actions/workflows/test.yml/badge.svg" alt="test"></a>
+  <a href="https://github.com/Star-Flex/jjpay-go/actions/workflows/lint.yml"><img src="https://github.com/Star-Flex/jjpay-go/actions/workflows/lint.yml/badge.svg" alt="lint"></a>
+  <a href="https://github.com/Star-Flex/jjpay-go/actions/workflows/codeql.yml"><img src="https://github.com/Star-Flex/jjpay-go/actions/workflows/codeql.yml/badge.svg" alt="codeql"></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/Star-Flex/jjpay-go"><img src="https://api.scorecard.dev/projects/github.com/Star-Flex/jjpay-go/badge" alt="OpenSSF Scorecard"></a>
+  <a href="https://pkg.go.dev/github.com/Star-Flex/jjpay-go"><img src="https://pkg.go.dev/badge/github.com/Star-Flex/jjpay-go.svg" alt="Go Reference"></a>
+  <a href="go.mod"><img src="https://img.shields.io/badge/go-1.22%2B-00ADD8" alt="Go 1.22+"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License"></a>
+</p>
 
 jjpay 支付网关的 Go 客户端。只做四件事：签名、验签、超时与有限重试、请求响应结构体。
 **只依赖标准库**——不引 gin、不引 gorm、不引任何日志库。

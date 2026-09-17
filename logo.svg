@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="166 -45 921 921" fill="none" role="img" aria-labelledby="t">
+  <title id="t">jjpay</title>
+  <style>
+    .blue{fill:#2854F3}.navy{fill:#18244E}.cream{fill:#FFF9EF}
+    .light{fill:#B8C8FF}.blush{fill:#FFC2AC}
+  </style>
+  <g id="ears">
+    <path class="blue" d="M354 186C330 165 301 151 276 152C221 153 177 195 176 244C175 282 194 314 223 331L347 300Z" />
+    <path class="light" d="M292 226C280 210 263 202 250 205C230 208 217 225 219 246C220 266 232 283 249 298Z" />
+    <path class="blue" d="M899 186C923 165 952 151 977 152C1032 153 1076 195 1077 244C1078 282 1059 314 1030 331L906 300Z" />
+    <path class="light" d="M961 226C973 210 990 202 1003 205C1023 208 1036 225 1034 246C1033 266 1021 283 1004 298Z" />
+  </g>
+  <g id="head">
+    <path class="blue" d="M626 90C500 88 409 123 346 182C262 218 207 318 190 415C179 468 177 514 185 554C197 627 242 672 321 701C401 731 512 741 626 741C740 741 851 731 931 701C1010 672 1055 627 1067 554C1075 514 1073 468 1062 415C1045 318 990 218 906 182C843 123 752 88 626 90Z" />
+    <path class="cream" d="M199 477C224 442 259 421 301 425C352 428 384 469 430 469C479 469 527 410 626 408C725 410 773 469 822 469C868 469 900 428 951 425C993 421 1028 442 1053 477C1064 498 1068 527 1062 553C1049 619 1003 664 925 692C847 721 739 733 626 733C513 733 405 721 327 692C249 664 203 619 190 553C184 527 188 498 199 477Z" />
+  </g>
+  <g id="face">
+    <ellipse class="navy" cx="452" cy="411" rx="42" ry="54" transform="rotate(10 452 411)" />
+    <ellipse class="navy" cx="801" cy="411" rx="42" ry="54" transform="rotate(-10 801 411)" />
+    <circle cx="465" cy="386" r="12" fill="#FFF" />
+    <circle cx="789" cy="386" r="12" fill="#FFF" />
+    <ellipse class="blush" cx="356" cy="490" rx="47" ry="30" />
+    <ellipse class="blush" cx="897" cy="490" rx="47" ry="30" />
+    <path class="navy" d="M626 427C600 427 569 433 569 450C569 467 604 498 626 500C648 498 683 467 683 450C683 433 652 427 626 427Z" />
+    <path d="M578 521C586 545 604 552 626 552C648 552 666 545 674 521" stroke="#18244E" stroke-width="17" stroke-linecap="round" />
+  </g>
+</svg>

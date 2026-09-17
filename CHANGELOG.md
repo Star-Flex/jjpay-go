@@ -3,6 +3,10 @@
 本包遵循 [语义化版本](https://semver.org/lang/zh-CN/)。**v0.x 不承诺向后兼容**——
 在第一个接入方真正上线之前，契约还允许调整；到 v1.0.0 才冻结。
 
+## v0.1.3
+
+- README 加上 logo 与居中的标题、徽章
+
 ## v0.1.2
 
 - 移除本仓库里的 `dependabot.yml`。本仓库的 PR 是关闭的，Dependabot 在这里开不出
