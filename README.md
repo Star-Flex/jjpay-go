@@ -333,11 +333,17 @@ func handle(evt *jjpay.Event) error {
 
 一致性的判定字段是 `TotalMinor` + `Subject` + `NotifyURL`，其余字段不同视为一致。
 
-### 退款的同步返回是「受理」，不是「到账」
+### 退款的同步返回可能已经是终态，按 `Status` 判
 
-`Refund` 返回 `Status == RefundProcessing` 只说明 jjpay 收下了。真实结果走
-`refund.succeeded` / `refund.failed` 通知，或用 `QueryRefund` 查。
-**不要凭同步返回就给用户记账退款成功。**
+`Status == RefundSucceeded` 就是真退成功了（支付宝的退款是同步接口，通常走这条），
+可以当场记账。`Status == RefundProcessing` 才是只收下了、结果未定——微信原路退回
+银行卡要 T+1~3 天，通常是这一档，真实结果走 `refund.succeeded` / `refund.failed`
+通知，或用 `QueryRefund` 查。
+
+**不要凭「调用没报错」就记账退款成功**，那和 `Status` 是两回事。
+
+无论同步返回哪一档，终态都会再推一条通知（同步已成功也推，防的是响应写回途中
+断连）。按 `RefundNo` 幂等即可，别把它当成第二笔退款。
 
 ### 错误处理
 

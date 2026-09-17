@@ -61,6 +61,31 @@ jobs:
           awk -v p="$pct" 'BEGIN { exit (p+0 >= 90) ? 0 : 1 }' || {
             echo "低于 90%，不通过"; exit 1; }
 
+  # 只在每周那一跑与手动触发时跑：模糊测试是按时间烧 CPU 的，挂在每次 push 上
+  # 既拖慢反馈又没多少新发现。种子语料在 testdata/ 里，每次 push 的普通 go test
+  # 会把它们当普通用例跑一遍。
+  fuzz:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version: stable
+          cache: false
+      - run: go test -run xxx -fuzz=FuzzVerifyNotify -fuzztime=120s .
+      - run: go test -run xxx -fuzz=FuzzVerifyReturn -fuzztime=120s .
+      # 崩了的话把复现语料捞出来，否则 runner 一销毁就没了。
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: fuzz-corpus
+          path: testdata/fuzz/
+          retention-days: 14
+
   govulncheck:
     runs-on: ubuntu-latest
     timeout-minutes: 10

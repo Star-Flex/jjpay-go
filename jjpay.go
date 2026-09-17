@@ -80,7 +80,7 @@ const (
 type RefundStatus int16
 
 const (
-	RefundProcessing RefundStatus = 1 // 处理中。同步返回的是"受理"，不是"到账"
+	RefundProcessing RefundStatus = 1 // 处理中。结果未定，等通知或查单
 	RefundSucceeded  RefundStatus = 2
 	RefundFailed     RefundStatus = 3
 )

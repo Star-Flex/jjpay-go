@@ -53,11 +53,17 @@ type Refund struct {
 
 // Refund 发起退款。
 //
-// # 同步返回的是"受理"，不是"到账"
+// # 同步返回可能已经是终态，按 Status 判，别假定
 //
-// 拿到 Status == RefundProcessing 只说明 jjpay 收下了这笔退款请求。真实
-// 结果经 refund.succeeded / refund.failed 异步通知，或由 QueryRefund 查。
-// 不要凭同步返回就给用户记账退款成功。
+// Status == RefundSucceeded 就是真退成功了（支付宝的退款是同步接口，
+// 通常走这条），可以当场记账。Status == RefundProcessing 才是"jjpay 收下了、
+// 结果未定"——微信原路退回银行卡要 T+1~3 天，通常是这一档；真实结果经
+// refund.succeeded / refund.failed 异步通知，或由 QueryRefund 查。
+//
+// 不要凭"调用没报错"就记账退款成功——那和 Status 是两回事。
+//
+// 无论同步返回哪一档，终态都会再推一条通知（同步已成功也推，防的是
+// 响应写回途中断连）。按 RefundNo 幂等即可，别把它当成第二笔退款。
 //
 // # 幂等
 //
