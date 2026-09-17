@@ -1,0 +1,23 @@
+version: 2
+updates:
+  # 钉了 SHA 之后就没人会手动升级了，靠它来提 PR ——
+  # 注释里的 tag 就是给它认版本用的。
+  #
+  # 本仓库关掉了 PR，所以这些更新提到内部仓库那边去处理；这份配置留着是为了
+  # 万一以后打开 PR，规则已经在了。
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+
+  # 本包零第三方依赖，这一条现在什么都不会提。留着是门禁的另一半：
+  # 哪天真引了依赖，安全更新会自己找上门。
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "deps"

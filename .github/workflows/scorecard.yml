@@ -1,0 +1,41 @@
+# OpenSSF Scorecard：按一套公开的标准给本仓库的供应链卫生打分，
+# 查的正是"CI 里有没有不太好的东西"——action 有没有钉 SHA、token 权限是不是
+# 最小、有没有分支保护、有没有危险的触发器。结果进 Security 标签。
+name: scorecard
+
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: "23 7 * * 3"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      security-events: write
+      id-token: write # 公开评分需要它签名
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: SARIF file
+          path: results.sarif
+          retention-days: 5
+      - uses: github/codeql-action/upload-sarif@faaca9a8f6edddba5725ffe5adefdab6669a2eca # v3
+        with:
+          sarif_file: results.sarif

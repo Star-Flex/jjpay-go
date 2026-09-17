@@ -126,7 +126,7 @@ func VerifyWithOptions(header http.Header, body []byte, opts NotifyOptions) (*Ev
 
 	var evt Event
 	if err := json.Unmarshal(body, &evt); err != nil {
-		return nil, fmt.Errorf("%w: 通知 body 解析失败: %v", ErrBadResponse, err)
+		return nil, fmt.Errorf("%w: 通知 body 解析失败: %w", ErrBadResponse, err)
 	}
 	// body 里的 event 与头不一致说明两端有一方出了问题，宁可拒。
 	if evt.Event != "" && string(evt.Event) != event {

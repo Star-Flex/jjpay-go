@@ -90,7 +90,8 @@ func VerifyReturnWithOptions(query url.Values, opts ReturnOptions) (*ReturnResul
 	if res.TotalMinor, err = strconv.ParseInt(total, 10, 64); err != nil {
 		return nil, fmt.Errorf("%w: total_minor 非法 %q", ErrBadResponse, total)
 	}
-	if sec, err := strconv.ParseInt(ts, 10, 64); err == nil {
+	// 时间戳解析失败不算错误：它已经在签名里了，解不出来只是不填 Timestamp。
+	if sec, tsErr := strconv.ParseInt(ts, 10, 64); tsErr == nil {
 		res.Timestamp = time.Unix(sec, 0)
 	}
 	if paidAt != "" {

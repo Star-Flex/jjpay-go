@@ -1,0 +1,49 @@
+# golangci-lint 配置（v2 格式）。
+# 这里只开"能指出真问题"的检查器，不开格式与风格类的口味之争——
+# gofmt 由 test 工作流单独卡，风格靠 review。
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - errcheck      # 没处理的 error
+    - govet         # 标准库自带的一套，含 printf 格式串、copylocks
+    - ineffassign   # 赋了值没用
+    - staticcheck   # 正确性 + 简化建议
+    - unused        # 没人用的私有符号
+    - bodyclose     # HTTP 响应体没关 —— 客户端库最容易漏的那个
+    - errorlint     # 用 == 比 error、%v 包 error 这类
+    - gosec         # 安全问题：弱随机、硬编码凭据、不安全的 TLS 配置
+    - misspell
+    - noctx         # 发 HTTP 请求没带 context
+    - nilerr        # err != nil 却 return nil
+
+  settings:
+    errcheck:
+      # 这几个的返回值忽略掉是惯例，不算漏处理。
+      exclude-functions:
+        - (io.Closer).Close
+        - (net/http.ResponseWriter).Write
+    gosec:
+      excludes:
+        - G104  # 与 errcheck 重复
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment  # 为了省几字节把字段打乱，读代码的人吃亏
+
+  exclusions:
+    presets:
+      - comments
+      - std-error-handling
+    rules:
+      # 测试里为了造场景会故意忽略错误、用弱随机，不必在这上面较劲。
+      - path: _test\.go
+        linters:
+          - errcheck
+          - gosec
+          - noctx
+
+formatters:
+  enable:
+    - gofmt

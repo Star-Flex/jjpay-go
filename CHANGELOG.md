@@ -3,6 +3,16 @@
 本包遵循 [语义化版本](https://semver.org/lang/zh-CN/)。**v0.x 不承诺向后兼容**——
 在第一个接入方真正上线之前，契约还允许调整；到 v1.0.0 才冻结。
 
+## v0.1.1
+
+- 错误链修好了：`ErrBadResponse` 这一类错误此前只把哨兵包进 `%w`，底层的
+  `json.SyntaxError` 之类用的是 `%v`，链断在中间。现在两段都是 `%w`，
+  `errors.Is` / `errors.As` 能一路取到真正的原因
+- CI 补齐：golangci-lint、govulncheck（每周一次，扫的是标准库的 CVE）、
+  CodeQL、OpenSSF Scorecard、覆盖率不低于 90% 的门禁
+- 所有 GitHub Action 钉在 commit SHA 上，不用可变 tag
+- 文档：PR 已在仓库设置里关闭，措辞改对
+
 ## v0.1.0
 
 首个公开版本。

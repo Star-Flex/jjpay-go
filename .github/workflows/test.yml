@@ -1,9 +1,16 @@
+# 测试 + 漏洞扫描。
+#
+# 所有 action 钉在 commit SHA 上，后面的注释写着对应的 tag——tag 是可变的，
+# 上游仓库被攻陷时改一下 tag 就能在我们的 CI 里跑任意代码。注释保留是为了让
+# Dependabot 还能认出版本并提 bump。
 name: test
 
 on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: "17 3 * * 1" # 每周一跑一次：代码没动，但依赖的 Go 版本会出新漏洞
   workflow_dispatch:
 
 permissions:
@@ -12,22 +19,58 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        # 1.22 是 go.mod 里声明的下限，必须真的在 1.22 上能编能过；
-        # stable 保证新版本不会把我们甩下。只跑这两头，中间的版本不值得烧 CI。
+        # 1.22 是 go.mod 里声明的下限，必须真的在上面能编能过，否则那行就是撒谎；
+        # stable 保证新版本不会把我们甩下。中间的版本不值得烧 CI。
         go: ["1.22", "stable"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version: ${{ matrix.go }}
-          # 本包没有任何第三方依赖，没有 go.sum 可做 cache key
-          cache: false
+          cache: false # 本包没有第三方依赖，没有 go.sum 可做 cache key
       - run: go vet ./...
       - run: go test -race ./...
       - name: gofmt
         run: |
           out="$(gofmt -l .)"
           if [ -n "$out" ]; then echo "以下文件没格式化："; echo "$out"; exit 1; fi
+
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version: stable
+          cache: false
+      # 卡一条线而不是只打印数字：覆盖率只有在会挡住合并时才有约束力。
+      - name: 覆盖率不得低于 90%
+        run: |
+          go test -covermode=atomic -coverprofile=cover.out ./...
+          pct="$(go tool cover -func=cover.out | awk '/^total:/ {print $3}' | tr -d '%')"
+          echo "覆盖率 ${pct}%"
+          awk -v p="$pct" 'BEGIN { exit (p+0 >= 90) ? 0 : 1 }' || {
+            echo "低于 90%，不通过"; exit 1; }
+
+  govulncheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      # 本包零第三方依赖，所以它扫的其实是 Go 标准库——crypto/tls、net/http
+      # 这些出了 CVE，用旧 Go 编出来的二进制照样中招。这正是每周跑一次的理由。
+      - uses: golang/govulncheck-action@032d45514ae346b1db93c04b0c90b841c370344f # v1.1.0
+        with:
+          go-version-input: stable
+          go-package: ./...

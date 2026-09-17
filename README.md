@@ -1,6 +1,9 @@
 # jjpay Go SDK
 
 [![test](https://github.com/Star-Flex/jjpay-go/actions/workflows/test.yml/badge.svg)](https://github.com/Star-Flex/jjpay-go/actions/workflows/test.yml)
+[![lint](https://github.com/Star-Flex/jjpay-go/actions/workflows/lint.yml/badge.svg)](https://github.com/Star-Flex/jjpay-go/actions/workflows/lint.yml)
+[![codeql](https://github.com/Star-Flex/jjpay-go/actions/workflows/codeql.yml/badge.svg)](https://github.com/Star-Flex/jjpay-go/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Star-Flex/jjpay-go/badge)](https://scorecard.dev/viewer/?uri=github.com/Star-Flex/jjpay-go)
 [![Go Reference](https://pkg.go.dev/badge/github.com/Star-Flex/jjpay-go.svg)](https://pkg.go.dev/github.com/Star-Flex/jjpay-go)
 [![Go 1.22+](https://img.shields.io/badge/go-1.22%2B-00ADD8)](go.mod)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
@@ -10,7 +13,7 @@ jjpay 支付网关的 Go 客户端。只做四件事：签名、验签、超时�
 
 下面这份 README 就是接入所需的全部。
 
-> 本仓库由上游自动同步，不接受 PR；issue 照常，见 [CONTRIBUTING](CONTRIBUTING.md)。
+> 本仓库由上游自动同步，PR 已关闭；issue 照常，见 [CONTRIBUTING](CONTRIBUTING.md)。
 
 ```bash
 go get github.com/Star-Flex/jjpay-go

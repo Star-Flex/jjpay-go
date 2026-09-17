@@ -112,7 +112,7 @@ const (
 const (
 	EnvBaseURL = "JJPAY_BASE_URL"
 	EnvAppID   = "JJPAY_APP_ID"
-	EnvSecret  = "JJPAY_APP_SECRET"
+	EnvSecret  = "JJPAY_APP_SECRET" //nolint:gosec // 这是环境变量名，不是密钥
 )
 
 // Config 构造 Client 的参数。BaseURL / AppID / Secret 三项必须有值，
@@ -453,7 +453,7 @@ func (c *Client) attempt(ctx context.Context, cl call, raw []byte) error {
 		Data json.RawMessage `json:"data"`
 	}
 	if err := json.Unmarshal(body, &env); err != nil {
-		return fmt.Errorf("%w: %v", ErrBadResponse, err)
+		return fmt.Errorf("%w: %w", ErrBadResponse, err)
 	}
 	if env.Code != CodeSuccess {
 		return &APIError{Code: env.Code, Msg: env.Msg, Data: env.Data}
@@ -469,7 +469,7 @@ func (c *Client) attempt(ctx context.Context, cl call, raw []byte) error {
 		return fmt.Errorf("%w: 成功响应里没有 data", ErrBadResponse)
 	}
 	if err := json.Unmarshal(env.Data, cl.out); err != nil {
-		return fmt.Errorf("%w: data 反序列化失败: %v", ErrBadResponse, err)
+		return fmt.Errorf("%w: data 反序列化失败: %w", ErrBadResponse, err)
 	}
 	return nil
 }
@@ -502,8 +502,10 @@ func unsignedAuthError(h http.Header, body []byte) *APIError {
 		Code Code   `json:"code"`
 		Msg  string `json:"msg"`
 	}
+	// 返回 nil 的含义是"这不是一条未签名的鉴权错误"，由调用方按验签失败处理，
+	// 不是把错误吞掉。
 	if err := json.Unmarshal(body, &env); err != nil {
-		return nil
+		return nil //nolint:nilerr // nil 表示"不适用"，不是把错误吞掉
 	}
 	// 放进来的字节是完全没有验过签的，
 	// 只因为里面除了一个鉴权错误码没有任何值钱的东西才被容忍。
