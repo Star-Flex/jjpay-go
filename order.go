@@ -19,12 +19,6 @@ type Item struct {
 	Qty       int    `json:"qty"`
 }
 
-// LimitMethod 商户强制收窄的可选支付方式。
-type LimitMethod struct {
-	Channel Channel `json:"channel"`
-	Method  Method  `json:"method"`
-}
-
 // CreateOrderReq 下单请求。
 type CreateOrderReq struct {
 	// OutTradeNo 商户单号，商户内唯一。它同时是幂等键，见 CreateOrder。
@@ -65,8 +59,7 @@ type CreateOrderReq struct {
 	NotifyURL string `json:"notify_url,omitempty"`
 	// ReturnURL 用户支付完的回跳地址。回跳不代表支付成功，落地页必须
 	// 自己查单确认。
-	ReturnURL    string        `json:"return_url,omitempty"`
-	LimitMethods []LimitMethod `json:"limit_methods,omitempty"`
+	ReturnURL string `json:"return_url,omitempty"`
 }
 
 // CreateOrderResp 下单响应。

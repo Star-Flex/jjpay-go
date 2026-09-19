@@ -46,7 +46,7 @@ if err != nil {
 
 | | |
 |---|---|
-| `JJPAY_BASE_URL` | jjpay 的根地址，如 `https://pay.example.com` |
+| `JJPAY_BASE_URL` | jjpay 的根地址，如 `https://pay.example.com/api`。**管理员给的路径前缀要连着填**：网关按它分流，省掉就到不了后端。前缀不参与签名 |
 | `JJPAY_APP_ID` | 后台创建接入方时生成，不是秘密 |
 | `JJPAY_APP_SECRET` | 只显示一次，丢了只能重置 |
 
@@ -54,7 +54,7 @@ if err != nil {
 
 ```go
 c, err := jjpay.New(jjpay.Config{
-    BaseURL: "https://pay.example.com", // 留空则回退到 JJPAY_BASE_URL
+    BaseURL: "https://pay.example.com/api", // 留空则回退到 JJPAY_BASE_URL
     AppID:   "app_k7m2qx9b4t",
     Secret:  os.Getenv("MY_OWN_SECRET_NAME"),
 })

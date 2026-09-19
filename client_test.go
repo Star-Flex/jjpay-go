@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -54,10 +55,47 @@ func (fs *fakeServer) errorf(format string, args ...any) {
 
 func newFakeServer(t *testing.T, data any) *fakeServer {
 	t.Helper()
+	return newFakeServerBehindPrefix(t, data, "")
+}
+
+// newFakeServerBehindPrefix prefix 非空时这台就是「剥前缀的网关」：
+// 带前缀的请求剥掉前缀再交给应用，不带前缀的 404（线上那条规则只回源 /api/*）。
+//
+// 【为什么假服务端必须长这样】它按 r.URL.RequestURI() 验签，也就是"应用看到什么就验什么"。
+// 不剥前缀的话它其实是在配合 SDK：SDK 签什么它就验什么，两边一起错也测不出来。
+func newFakeServerBehindPrefix(t *testing.T, data any, prefix string) *fakeServer {
+	t.Helper()
 	fs := &fakeServer{t: t, data: data, code: CodeSuccess, msg: "success"}
-	fs.Server = httptest.NewServer(http.HandlerFunc(fs.handle))
+	var h http.Handler = http.HandlerFunc(fs.handle)
+	if prefix != "" {
+		h = stripEscapedPrefix(prefix, h)
+	}
+	fs.Server = httptest.NewServer(h)
 	t.Cleanup(fs.Close)
 	return fs
+}
+
+// stripEscapedPrefix 按「线路上的那串字节」剥前缀，标准库的 http.StripPrefix 不行：
+// 它比的是 r.URL.Path（已解码），前缀写成 "/a%20b" 时匹配不上解码后的 "/a b"，
+// 一律 404。网关剥的是请求行上的字节，这里照做。
+func stripEscapedPrefix(prefix string, h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		esc := r.URL.EscapedPath()
+		if !strings.HasPrefix(esc, prefix) {
+			http.NotFound(w, r)
+			return
+		}
+		rest, err := url.Parse(esc[len(prefix):])
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		r2 := *r
+		u := *r.URL
+		u.Path, u.RawPath = rest.Path, rest.RawPath
+		r2.URL = &u
+		h.ServeHTTP(w, &r2)
+	})
 }
 
 func (fs *fakeServer) handle(w http.ResponseWriter, r *http.Request) {
@@ -205,7 +243,7 @@ func TestCreateOrder(t *testing.T) {
 	if sent["total_minor"] != float64(1990) {
 		t.Fatalf("total_minor = %v", sent["total_minor"])
 	}
-	for _, k := range []string{"description", "items", "expire_minutes", "notify_url", "return_url", "limit_methods"} {
+	for _, k := range []string{"description", "items", "expire_minutes", "notify_url", "return_url"} {
 		if _, ok := sent[k]; ok {
 			t.Fatalf("没填的可选字段 %s 不该出现在请求体里: %s", k, got.Body)
 		}
@@ -581,15 +619,18 @@ func TestReadRetriesDisabled(t *testing.T) {
 	}
 }
 
-func TestBaseURLWithPathPrefix_IsSigned(t *testing.T) {
-	// 网关按路径分流时 BaseURL 带前缀，前缀必须一并进签名的 PATH。
+func TestBaseURLPathPrefix_NotSigned(t *testing.T) {
+	// 网关按路径分流：BaseURL 带前缀，请求也要带着它发出去，但「前缀不进签名」——
+	// 网关剥掉它才回源，应用看到的路径里没有这一段，签了两端就永远对不上。
+	//
+	// 这台 srv 就是那个网关：剥掉 /gw 再交给应用，应用按它看到的路径验签。
 	var gotPath string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.RequestURI()
 		body, _ := io.ReadAll(r.Body)
 		p := requestPayload(r.Method, r.URL.RequestURI(), r.Header.Get(HeaderTimestamp), r.Header.Get(HeaderNonce), hashBody(body))
 		if !verifySign(testSecret, p, r.Header.Get(HeaderSignature)) {
-			t.Errorf("带前缀时验签失败，待签串=%q", p)
+			t.Errorf("应用按自己看到的路径验签失败，待签串=%q", p)
 		}
 		out := []byte(`{"code":10000,"msg":"success","data":{"trade_no":"P1"}}`)
 		ts := strconv.FormatInt(time.Now().Unix(), 10)
@@ -597,7 +638,8 @@ func TestBaseURLWithPathPrefix_IsSigned(t *testing.T) {
 		w.Header().Set(HeaderNonce, "resp-nonce-0123456789")
 		w.Header().Set(HeaderSignature, computeSign(testSecret, responsePayload(ts, "resp-nonce-0123456789", hashBody(out))))
 		_, _ = w.Write(out)
-	}))
+	})
+	srv := httptest.NewServer(http.StripPrefix("/gw", inner))
 	defer srv.Close()
 
 	c, err := New(Config{BaseURL: srv.URL + "/gw/", AppID: "a", Secret: testSecret})
@@ -607,8 +649,46 @@ func TestBaseURLWithPathPrefix_IsSigned(t *testing.T) {
 	if _, err := c.QueryOrder(context.Background(), "P1"); err != nil {
 		t.Fatalf("QueryOrder: %v", err)
 	}
-	if gotPath != "/gw/openapi/v1/orders/P1" {
-		t.Fatalf("path = %s", gotPath)
+	// 应用看到的（= 待签的）那一段
+	if gotPath != "/openapi/v1/orders/P1" {
+		t.Fatalf("应用看到的 path = %s", gotPath)
+	}
+}
+
+// TestSignPathStripsPrefix 待签 PATH 的切法，逐串钉死。
+//
+// 上面那条走的是真实链路，但只覆盖一种形状；这条把 query、转义前缀、多段前缀
+// 与"切不动就报错"一次列清楚。
+func TestSignPathStripsPrefix(t *testing.T) {
+	cases := []struct {
+		base, uri, want string
+	}{
+		{"https://pay.example.com", "/openapi/v1/orders?x=1", "/openapi/v1/orders?x=1"},
+		{"https://pay.example.com/api", "/api/openapi/v1/orders?x=1", "/openapi/v1/orders?x=1"},
+		{"https://pay.example.com/gw/pay/", "/gw/pay/openapi/v1/orders", "/openapi/v1/orders"},
+		{"https://pay.example.com/a%20b", "/a%20b/openapi/v1/orders", "/openapi/v1/orders"},
+	}
+	for _, tc := range cases {
+		c, err := New(Config{BaseURL: tc.base, AppID: "a", Secret: testSecret})
+		if err != nil {
+			t.Fatalf("New(%q): %v", tc.base, err)
+		}
+		got, err := c.signPath(tc.uri)
+		if err != nil {
+			t.Fatalf("signPath(%q): %v", tc.uri, err)
+		}
+		if got != tc.want {
+			t.Errorf("BaseURL=%q signPath(%q) = %q，期望 %q", tc.base, tc.uri, got, tc.want)
+		}
+	}
+
+	// 切不动就报错，不能静默签全路径——那会变成"偶尔能通、换个地址就 20002"
+	c, err := New(Config{BaseURL: "https://pay.example.com/api", AppID: "a", Secret: testSecret})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.signPath("/openapi/v1/orders"); err == nil {
+		t.Fatal("前缀对不上时应当报错")
 	}
 }
 

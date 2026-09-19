@@ -157,12 +157,15 @@ func TestReceiptMustBeTheOneWeAsked(t *testing.T) {
 	})
 }
 
-// TestEscapedBasePathSignsWhatItSends BaseURL 带转义前缀时，签的必须是发出去的那串字节。
+// TestEscapedBasePathIsSentButNotSigned BaseURL 带转义前缀时：前缀原样发出去，
+// 但待签串里没有它。
 //
-// fakeServer 按 r.URL.RequestURI() 验签，签错了它会直接 t.Errorf——
+// 【转义这一段为什么要单独钉】url.URL.Path 是解码后的（"/a b"），线路上那串是
+// "/a%20b"。切前缀时拿错了那一份就切不动——而切不动是会报错的，不会静默签错。
+// fakeServer 按 r.URL.RequestURI() 验签，签错了它直接 t.Errorf，
 // 也就是说这个用例的断言实际在服务端那侧。
-func TestEscapedBasePathSignsWhatItSends(t *testing.T) {
-	fs := newFakeServer(t, map[string]any{"trade_no": "P1"})
+func TestEscapedBasePathIsSentButNotSigned(t *testing.T) {
+	fs := newFakeServerBehindPrefix(t, map[string]any{"trade_no": "P1"}, "/a%20b")
 	c, err := New(Config{BaseURL: fs.URL + "/a%20b", AppID: "a", Secret: testSecret})
 	if err != nil {
 		t.Fatal(err)
@@ -170,8 +173,9 @@ func TestEscapedBasePathSignsWhatItSends(t *testing.T) {
 	if _, err := c.QueryOrder(context.Background(), "P1"); err != nil {
 		t.Fatalf("请求失败: %v", err)
 	}
-	if got := fs.last.Load().Path; got != "/a%20b/openapi/v1/orders/P1" {
-		t.Fatalf("发出去的路径 = %q", got)
+	// 网关剥掉前缀后应用看到的那一段（= 待签的那一段）
+	if got := fs.last.Load().Path; got != "/openapi/v1/orders/P1" {
+		t.Fatalf("应用看到的路径 = %q", got)
 	}
 }
 

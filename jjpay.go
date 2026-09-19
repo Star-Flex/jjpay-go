@@ -118,8 +118,10 @@ const (
 // Config 构造 Client 的参数。BaseURL / AppID / Secret 三项必须有值，
 // 但不一定要写在代码里：留空时各自回退到 EnvBaseURL / EnvAppID / EnvSecret。
 type Config struct {
-	// BaseURL 网关根地址，如 https://pay.example.com。允许带路径前缀，
-	// 前缀会一并计入签名的 PATH。留空则取 JJPAY_BASE_URL。
+	// BaseURL 网关根地址，如 https://pay.example.com/api。允许带路径前缀，
+	// 「前缀只用来拼地址，不进签名」：网关按前缀分流、剥掉它才回源，
+	// 待签的 PATH 是网关背后那个应用看到的那一段（`/openapi/v1/...`）。
+	// 留空则取 JJPAY_BASE_URL。
 	//
 	// 本包不带内置默认值：地址属于部署，不属于代码。
 	BaseURL string
@@ -159,7 +161,7 @@ type Logger interface {
 // Client 是并发安全的，一个 App 建一个复用即可。
 type Client struct {
 	base     *url.URL
-	basePath string // 已去掉尾部 "/" 的路径前缀，参与签名
+	basePath string // 已去掉尾部 "/" 的路径前缀。只用来拼地址，签名前会被切掉
 	appID    string
 	secret   string
 	hc       *http.Client
@@ -251,9 +253,9 @@ func New(cfg Config) (*Client, error) {
 
 	return &Client{
 		base: u,
-		// Path 是解码后的：BaseURL 写成
-		// https://pay.example.com/a%20b 时 Path 是 "/a b"，拿它签名就会签出与真正发出去的
-		// 字节不同的串，服务端一律 20002。EscapedPath 才是上线路的那一份。
+		// Path 是解码后的：BaseURL 写成 https://pay.example.com/a%20b 时 Path 是 "/a b"，
+		// 而线路上那串是 "/a%20b"。签名前要从 RequestURI 头上把前缀切掉，
+		// 两者不是同一串字节就切不准。EscapedPath 才是上线路的那一份。
 		basePath: strings.TrimRight(u.EscapedPath(), "/"),
 		appID:    appID,
 		secret:   secret,
@@ -378,6 +380,21 @@ func backoff(i int) time.Duration {
 	return d
 }
 
+// signPath 从请求行的 RequestURI 上切掉网关前缀，得到待签的 PATH。
+//
+// 切不动就报错，不静默退回签全路径：那说明 basePath 与真正发出去的字节不一致
+// （BaseURL 里有点段、异常转义之类），此时签什么都是错的，当场说清楚比让接入方
+// 对着一串 20002 猜要省事得多。
+func (c *Client) signPath(requestURI string) (string, error) {
+	if c.basePath == "" {
+		return requestURI, nil
+	}
+	if !strings.HasPrefix(requestURI, c.basePath) {
+		return "", fmt.Errorf("jjpay: 内部错误：请求路径 %q 不以 BaseURL 的前缀 %q 开头，请检查 BaseURL", requestURI, c.basePath)
+	}
+	return requestURI[len(c.basePath):], nil
+}
+
 func (c *Client) attempt(ctx context.Context, cl call, raw []byte) error {
 	reqCtx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
@@ -392,17 +409,25 @@ func (c *Client) attempt(ctx context.Context, cl call, raw []byte) error {
 		return fmt.Errorf("jjpay: 构造请求失败: %w", err)
 	}
 
-	// RequestURI() 返回的就是这条
-	// 请求行上真正写出去的那串字节（EscapedPath + ? + RawQuery）。自己拼字符串
-	// 去签，只要 net/url 在任何一环做了归一化（大小写转义、点段消除），
-	// 签的和发的就会是两串东西，服务端一律 20002，而错误信息只会说"签名不对"。
-	// 让它由构造过程保证相等，比事后对齐可靠。
+	// 待签的 PATH 从 RequestURI() 上切出来，而不是拿 cl.path 另拼一串：
+	// RequestURI() 是这条请求行上真正写出去的那串字节（EscapedPath + ? + RawQuery），
+	// 只要 net/url 在任何一环做了归一化（大小写转义、点段消除），另拼的那串就和
+	// 发出去的对不上了。让它由构造过程保证一致，比事后对齐可靠。
+	//
+	// 【为什么要切掉 basePath】它是「网关的分流前缀」：网关按它把请求分给后端，
+	// 并且剥掉前缀才回源，后端看到的路径里根本没有这一段。把它签进去，
+	// 两端就永远是两串——而错误只会说一句笼统的"鉴权失败"。host 同理，本来就不签：
+	// 前缀和 host 都属于"请求投递到哪"，不属于"调用的是哪个接口"。
+	signPath, err := c.signPath(req.URL.RequestURI())
+	if err != nil {
+		return err
+	}
 	ts := strconv.FormatInt(c.now().Unix(), 10)
 	nonce, err := c.newNonce()
 	if err != nil {
 		return err
 	}
-	sig := computeSign(c.secret, requestPayload(cl.method, req.URL.RequestURI(), ts, nonce, hashBody(raw)))
+	sig := computeSign(c.secret, requestPayload(cl.method, signPath, ts, nonce, hashBody(raw)))
 	if raw != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
