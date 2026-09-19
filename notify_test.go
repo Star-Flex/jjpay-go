@@ -11,6 +11,9 @@ import (
 	"time"
 )
 
+// notifyBody 末尾那个 payer_ref 是「故意留的」：服务端已经不发它了，这里让它继续
+// 出现，是要钉住「通知里来了个 SDK 不认识的字段时，照常解析、签名照常过」——
+// 服务端加字段不该把老版本 SDK 打挂。别顺手把它「清理」掉。
 const notifyBody = `{"event":"pay.succeeded","trade_no":"P20260802143012K7M2QX9B4T",` +
 	`"out_trade_no":"RQ2026080200123","total_minor":1990,"channel":"wechat","method":"native",` +
 	`"channel_trade_no":"4200001234202608021234567890","paid_at":"2026-08-02T14:31:05+08:00",` +
@@ -50,7 +53,7 @@ func TestVerify_PaySucceeded(t *testing.T) {
 	if evt.ChannelTradeNo == "" || evt.PaidAt.IsZero() {
 		t.Fatalf("渠道单号/支付时间没解析出来: %+v", evt)
 	}
-	if evt.Attach != "plan_id=7" || evt.PayerRef != "u_8842" {
+	if evt.Attach != "plan_id=7" {
 		t.Fatalf("透传字段不对: %+v", evt)
 	}
 	if string(evt.Raw) != notifyBody {

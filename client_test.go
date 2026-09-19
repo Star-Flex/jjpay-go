@@ -205,7 +205,7 @@ func TestCreateOrder(t *testing.T) {
 	if sent["total_minor"] != float64(1990) {
 		t.Fatalf("total_minor = %v", sent["total_minor"])
 	}
-	for _, k := range []string{"description", "items", "payer_ref", "expire_minutes", "notify_url", "return_url", "limit_methods"} {
+	for _, k := range []string{"description", "items", "expire_minutes", "notify_url", "return_url", "limit_methods"} {
 		if _, ok := sent[k]; ok {
 			t.Fatalf("没填的可选字段 %s 不该出现在请求体里: %s", k, got.Body)
 		}

@@ -109,6 +109,9 @@ const (
 	vecRespBody = `{"code":10000,"msg":"success","data":{"trade_no":"P20260802143012K7M2QX9B4T"}}`
 	vecRespSig  = "f8e734ba8251f1a00d3931c2ba915e634720b16564551c8636c26467eeea847b"
 
+	// vecNotifyBody 里的 payer_ref 服务端已经不发了，这里留着是有意的：签名算的是
+	// 原始字节，报文里多一个 SDK 不认识的字段照样要验得过。改动它会同时作废下面
+	// 那条签名向量——那是这组测试的锚，别动。
 	vecNotifyBody = `{"event":"pay.succeeded","trade_no":"P20260802143012K7M2QX9B4T",` +
 		`"out_trade_no":"RQ2026080200123","total_minor":1990,"channel":"wechat","method":"native",` +
 		`"channel_trade_no":"4200001234202608021234567890","paid_at":"2026-08-02T14:31:05+08:00",` +

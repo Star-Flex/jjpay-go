@@ -85,6 +85,27 @@ if err != nil { return err }
 // 302 到 resp.CheckoutURL，或把它渲染成按钮
 ```
 
+想让收银台上显示商品明细与折扣，再加三个可选字段（都不传就只显示标题和一个金额）：
+
+```go
+jjpay.CreateOrderReq{
+    TotalMinor:    1490,          // 实际要收的钱
+    OriginalMinor: 1990,          // 原价。差额 500 由 jjpay 算，你不用传
+    DiscountLabel: "年付立减",     // 那一行叫什么，留空显示「优惠」
+    Items: []jjpay.Item{          // 明细按原价列，Qty 省略当 1
+        {Name: "基础版托管", UnitMinor: 1590, Qty: 1},
+        {Name: "快照备份", UnitMinor: 200, Qty: 2},
+    },
+    // …其余同上
+}
+```
+
+账单得算得平：`Σ(UnitMinor × Qty)` 要等于 `OriginalMinor`（没传原价时等于
+`TotalMinor`），不平返回 10001 并把算式回给你。没打折就别传 `OriginalMinor`，
+或者照实传一个等于 `TotalMinor` 的数——两者等价。
+
+这几个字段只是画面：`TotalMinor` 始终是唯一要收的钱，**退款也永远按它退**。
+
 ### 第 3 步 · 收异步通知（这一步才是"钱到了"的真相）
 
 ```go
@@ -204,7 +225,7 @@ echo / chi / fiber 同理：**拿到 `http.Header` 和原始 body 字节，调 `
 | 事件 | 去重键 |
 |---|---|
 | `pay.succeeded` / `order.closed` | `trade_no` + `event` |
-| `refund.succeeded` / `refund.failed` | **`refund_no`** + `event` |
+| `refund.succeeded` / `refund.failed` / `refund.stalled` | **`refund_no`** + `event` |
 
 拿 `trade_no + event` 去给退款事件去重，同一支付单的第二笔退款会被当成重复投递
 **直接丢掉**——那是一笔真实发生、你却没入账的退款。
@@ -344,6 +365,22 @@ func handle(evt *jjpay.Event) error {
 
 无论同步返回哪一档，终态都会再推一条通知（同步已成功也推，防的是响应写回途中
 断连）。按 `RefundNo` 幂等即可，别把它当成第二笔退款。
+
+### `refund.stalled`：退款卡住了，但还没结束
+
+极少数情况下会收到 `refund.stalled`。它**不是终态**——钱已经离开商户账户、
+还没落到用户手里，退款单仍是「处理中」，之后一定还会收到
+`refund.succeeded` 或 `refund.failed`。
+
+目前只有微信会出现：退往用户原路时银行拒收（卡作废或冻结），钱停在微信侧，
+要由网关侧的人去渠道后台决定去向，可能要几小时到几天。支付宝不会——它退卡
+失败会自动退到用户的支付宝余额。
+
+收到它**该做**的：把 `RefundNo` 和 `StalledReason`（渠道原话，可以直接给客服看）
+记下来，别再等这笔自己好。
+
+收到它**不该做**的：判定退款失败、给用户二次补偿。那笔钱后面仍可能到用户手里，
+补了就是退两次。
 
 ### 错误处理
 

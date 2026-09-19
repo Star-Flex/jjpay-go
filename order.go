@@ -10,6 +10,9 @@ import (
 )
 
 // Item 收银台展示用的订单明细。
+//
+// 行小计 = UnitMinor × Qty。Qty 省略或 ≤0 一律当 1 —— 只想说"这一行多少钱"
+// 而不想拆单价时，给 UnitMinor 一个数就够了。
 type Item struct {
 	Name      string `json:"name"`
 	UnitMinor int64  `json:"unit_minor"` // 单价，币种最小单位
@@ -36,10 +39,25 @@ type CreateOrderReq struct {
 
 	Description string `json:"description,omitempty"` // ≤256
 	Items       []Item `json:"items,omitempty"`
+	// OriginalMinor 原价，DiscountLabel 是收银台账单上优惠那一行的名称
+	// （≤16，留空显示「优惠」）。
+	//
+	// 优惠额 = OriginalMinor − TotalMinor，由服务端算。传两个价而不是
+	// "价 + 折扣额"，是因为两个价都是商户系统里现成的事实，差额是推导值 ——
+	// 让调用方自己减一遍，就多一次算错的机会。
+	// 0 或等于 TotalMinor 都表示这一单没有优惠，账单只画明细行。
+	//
+	// 两者只是展示，TotalMinor 仍是唯一要收的钱：下单给渠道的是它，
+	// 查单比对的是它，可退上限也是它 —— 退款永远按实付退，与原价无关。
+	//
+	// 给了 OriginalMinor 就必须 ≥ TotalMinor，否则返回 10001。带 Items 时
+	// 明细是按原价列的，Σ(UnitMinor×Qty) 要等于 OriginalMinor（没给原价时
+	// 等于 TotalMinor）。不带 Items 只给 OriginalMinor 也可以，
+	// 账单画成「原价 / 优惠 / 合计」三行。
+	OriginalMinor int64  `json:"original_minor,omitempty"`
+	DiscountLabel string `json:"discount_label,omitempty"`
 	// Attach 商户透传字段，≤128，原样出现在异步通知里。
 	Attach string `json:"attach,omitempty"`
-	// PayerRef 商户侧用户标识，不透明字符串，jjpay 不解释，只用于风控与查单。
-	PayerRef string `json:"payer_ref,omitempty"`
 	// ExpireMinutes 有效期，默认取服务端配置，上限 120。
 	ExpireMinutes int `json:"expire_minutes,omitempty"`
 	// NotifyURL 覆盖后台配置的回调地址。下单时会快照进订单，之后改后台配置

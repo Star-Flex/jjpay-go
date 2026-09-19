@@ -19,11 +19,24 @@ const (
 	EventOrderClosed     EventType = "order.closed"     // 支付单转为 closed（超时或主动关）
 	EventRefundSucceeded EventType = "refund.succeeded" // 退款成功
 	EventRefundFailed    EventType = "refund.failed"    // 退款失败
+	// EventRefundStalled 退款卡在渠道侧、需要人工介入。
+	//
+	// 【它不是终态】钱已经离开商户账户、还没落到用户手里，退款单仍是"处理中"。
+	// 收到它之后一定还会收到一条 refund.succeeded 或 refund.failed。
+	//
+	// 目前只有微信会出现：退往用户原路时银行拒收（卡作废或冻结），钱停在微信侧，
+	// 要由网关侧的人去渠道后台决定去向。支付宝不会——它退卡失败会自动退到
+	// 用户的支付宝余额。
+	//
+	// 收到它该做的事：别再等这笔退款自己好（可能要几小时到几天），
+	// 把单号记下来告诉自己的客服。切勿据此判定退款失败去做二次补偿——
+	// 那笔钱后面仍可能到用户手里。
+	EventRefundStalled EventType = "refund.stalled"
 )
 
 // Event 是一条已验签的异步通知。
 //
-// 四种事件共用一个结构体：字段按事件类型部分填充，用不到的留零值。判断先看
+// 所有事件共用一个结构体：字段按事件类型部分填充，用不到的留零值。判断先看
 // Event 字段再取相应字段，别对着零值猜。
 type Event struct {
 	Event EventType `json:"event"`
@@ -42,16 +55,21 @@ type Event struct {
 	PaidAt   time.Time `json:"paid_at"`
 	ClosedAt time.Time `json:"closed_at"`
 	Attach   string    `json:"attach,omitempty"`
-	PayerRef string    `json:"payer_ref,omitempty"`
 
-	// —— 退款类（refund.succeeded / refund.failed）——
+	// —— 退款类（refund.succeeded / refund.failed / refund.stalled）——
 	RefundNo    string `json:"refund_no,omitempty"`
 	OutRefundNo string `json:"out_refund_no,omitempty"`
 	// AmountMinor 本次退款金额；RefundedMinor 该支付单累计已退。
-	AmountMinor   int64     `json:"amount_minor,omitempty"`
-	RefundedMinor int64     `json:"refunded_minor,omitempty"`
-	FinishedAt    time.Time `json:"finished_at"`
-	FailReason    string    `json:"fail_reason,omitempty"`
+	AmountMinor   int64 `json:"amount_minor,omitempty"`
+	RefundedMinor int64 `json:"refunded_minor,omitempty"`
+	// FinishedAt 只在终态事件里有值。refund.stalled 给的是 StalledAt——
+	// 那笔退款还没结束，给它一个"完成时刻"会让人以为这就是结果。
+	FinishedAt time.Time `json:"finished_at"`
+	FailReason string    `json:"fail_reason,omitempty"`
+	// StalledAt / StalledReason 只在 refund.stalled 里有值，见 EventRefundStalled。
+	// StalledReason 是渠道原话，可以直接给客服看。
+	StalledAt     time.Time `json:"stalled_at"`
+	StalledReason string    `json:"stalled_reason,omitempty"`
 
 	// Raw 是验签通过的原始 body。字段不够用时自己解，别再去读 r.Body。
 	Raw []byte `json:"-"`
