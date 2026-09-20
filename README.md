@@ -19,6 +19,11 @@ jjpay 支付网关的 Go 客户端。只做四件事：签名、验签、超时�
 
 下面这份 README 就是接入所需的全部。
 
+**要把一个已经有支付逻辑的项目接进来**（尤其是把这件事交给 AI 做），先读
+[INTEGRATION-PLAYBOOK.md](INTEGRATION-PLAYBOOK.md)：接入的顺序、动手前必须查清的
+十个问题、几个没有默认答案的决策点，以及真实接入踩出来的坑。
+README 讲这套 API 怎么调，那份讲怎么接才不出事。
+
 > 本仓库由上游自动同步，PR 已关闭；issue 照常，见 [CONTRIBUTING](CONTRIBUTING.md)。
 
 ```bash
