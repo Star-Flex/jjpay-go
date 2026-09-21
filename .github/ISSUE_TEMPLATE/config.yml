@@ -2,7 +2,7 @@ blank_issues_enabled: true
 contact_links:
   - name: 安全问题
     url: https://github.com/Star-Flex/jjpay-go/security/advisories/new
-    about: 不要开公开 issue。走私密漏洞报告。
+    about: 通过私密渠道报告漏洞，请勿在公开 Issue 中披露细节。
   - name: 接口层面的改动
     url: https://github.com/Star-Flex/jjpay-go/blob/main/CONTRIBUTING.md
     about: 新增字段、改错误码、改签名算法请联系 jjpay 管理员。

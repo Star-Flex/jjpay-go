@@ -1,5 +1,5 @@
 name: 报告问题
-description: SDK 的行为和文档对不上，或者用着有问题
+description: 反馈 SDK 使用问题或文档差异
 body:
   - type: input
     id: version
@@ -19,13 +19,13 @@ body:
     id: repro
     attributes:
       label: 复现代码或步骤
-      description: 尽量给能直接跑的最小例子。请去掉 app_secret 与真实单号。
+      description: 请提供可运行的最小示例，并移除密钥、访问令牌、真实订单号、支付链接和客户信息。
       render: go
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
-      label: 你期望的行为，和实际看到的
+      label: 预期结果与实际结果
     validations:
       required: true
